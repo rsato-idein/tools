@@ -1,0 +1,17 @@
+# dev
+.env
+.vscode
+
+# cache
+__pycache__
+cache
+
+# compile
+model.py
+lib*.so
+model.h
+
+# data
+*.mp4
+*.jpg
+*.gif
