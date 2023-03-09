@@ -1,49 +1,10 @@
-import math
-from math import cos, pi, sin
+"""
+https://github.com/Ascend-Research/HeadPoseEstimation-WHENet/blob/master/utils.py
+"""
 
-import cv2
 import numpy as np
+from math import cos, sin, pi
 from scipy.spatial import Delaunay
-
-
-def softmax(x):
-    x -= np.max(x, axis=1, keepdims=True)
-    a = np.exp(x)
-    b = np.sum(np.exp(x), axis=1, keepdims=True)
-    return a/b
-
-
-def draw_axis(img, yaw, pitch, roll, tdx=None, tdy=None, size=100):
-    # Referenced from HopeNet https://github.com/natanielruiz/deep-head-pose
-    pitch = pitch * np.pi / 180
-    yaw = -(yaw * np.pi / 180)
-    roll = roll * np.pi / 180
-
-    if tdx is None and tdy is None:
-        tdx = tdx
-        tdy = tdy
-    else:
-        height, width = img.shape[:2]
-        tdx = width / 2
-        tdy = height / 2
-
-    # X-Axis pointing to right. drawn in red
-    x1 = size * (cos(yaw) * cos(roll)) + tdx
-    y1 = size * (cos(pitch) * sin(roll) + cos(roll) * sin(pitch) * sin(yaw)) + tdy
-
-    # Y-Axis | drawn in green
-    #        v
-    x2 = size * (-cos(yaw) * sin(roll)) + tdx
-    y2 = size * (cos(pitch) * cos(roll) - sin(pitch) * sin(yaw) * sin(roll)) + tdy
-
-    # Z-Axis (out of the screen) drawn in blue
-    x3 = size * (sin(yaw)) + tdx
-    y3 = size * (-cos(yaw) * sin(pitch)) + tdy
-
-    cv2.line(img, (int(tdx), int(tdy)), (int(x1), int(y1)), (0, 0, 255), 2)
-    cv2.line(img, (int(tdx), int(tdy)), (int(x2), int(y2)), (0, 255, 0), 2)
-    cv2.line(img, (int(tdx), int(tdy)), (int(x3), int(y3)), (255, 0, 0), 2)
-    return img
 
 
 def projectPoints(X, K, R, t, Kd):
@@ -116,22 +77,6 @@ def align(model, data):
     return rot, trans, trans_error, s
 
 
-def rotationMatrixToEulerAngles2(R):
-    y1 = -math.asin(R[2, 0])
-    y2 = math.pi - y1
-    if y1 > math.pi:
-        y1 = y1 - 2*math.pi
-    if y2 > math.pi:
-        y2 = y2 - 2*math.pi
-
-    x1 = math.atan2(R[2, 1]/math.cos(y1), R[2, 2]/math.cos(y1))
-    x2 = math.atan2(R[2, 1]/math.cos(y2), R[2, 2]/math.cos(y2))
-
-    z1 = math.atan2(R[1, 0]/math.cos(y1), R[0, 0]/math.cos(y1))
-    z2 = math.atan2(R[1, 0] / math.cos(y2), R[0, 0] / math.cos(y2))
-    return [x1, y1, z1], [x2, y2, z2]
-
-
 def reference_head(scale=0.01, pyr=(10., 0.0, 0.0)):
     kps = np.asarray([[-7.308957, 0.913869, 0.000000], [-6.775290, -0.730814, -0.012799],
                       [-5.665918, -3.286078, 1.022951], [-5.011779, -4.876396, 1.047961],
@@ -196,12 +141,8 @@ def get_sphere(theta, phi, row):
 
 
 def select_euler(two_sets):
-    pitch, yaw,  roll = two_sets[0]
+    pitch, yaw, roll = two_sets[0]
     pitch2, yaw2, roll2 = two_sets[1]
-    if yaw > 180.:
-        yaw = yaw - 360.
-    if yaw2 > 180.:
-        yaw2 = yaw2 - 360.
     if abs(roll) < 90 and abs(pitch) < 90:
         return True, [pitch, yaw, roll]
     elif abs(roll2) < 90 and abs(pitch2) < 90:
@@ -214,28 +155,19 @@ def inverse_rotate_zyx(M):
     if np.linalg.norm(M[:3, :3].T @ M[:3, :3] - np.eye(3)) > 1e-5:
         raise ValueError('Matrix is not a rotation')
 
-    if np.abs(M[0, 2]) > 0.9999999:
-        # gimbal lock
-        z = 0.0
-        # M[1,0] =  cz*sx*sy
-        # M[2,0] =  cx*cz*sy
-        if M[0, 2] > 0:
-            y = -np.pi / 2
-            x = np.arctan2(-M[1, 0], -M[2, 0])
-        else:
-            y = np.pi / 2
-            x = np.arctan2(M[1, 0], M[2, 0])
-        return np.array((x, y, z)), np.array((x, y, z))
+    # no gimbal lock
+    eps = 1e-7
+    y0 = np.clip(np.arcsin(-M[0, 2]), -np.pi/2 + eps, np.pi/2 - eps)
+    if y0 >= 0:
+        y1 = -y0 + np.pi
     else:
-        # no gimbal lock
-        y0 = np.arcsin(-M[0, 2])
-        y1 = np.pi - y0
-        cy0 = np.cos(y0)
-        cy1 = np.cos(y1)
+        y1 = -y0 - np.pi
+    cy0 = np.cos(y0)
+    cy1 = np.cos(y1)
 
-        x0 = np.arctan2(M[1, 2] / cy0, M[2, 2] / cy0)
-        x1 = np.arctan2(M[1, 2] / cy1, M[2, 2] / cy1)
+    x0 = np.arctan2(M[1, 2] / cy0, M[2, 2] / cy0)
+    x1 = np.arctan2(M[1, 2] / cy1, M[2, 2] / cy1)
 
-        z0 = np.arctan2(M[0, 1] / cy0, M[0, 0] / cy0)
-        z1 = np.arctan2(M[0, 1] / cy1, M[0, 0] / cy1)
-        return np.array((x0, y0, z0)), np.array((x1, y1, z1))
+    z0 = np.arctan2(M[0, 1] / cy0, M[0, 0] / cy0)
+    z1 = np.arctan2(M[0, 1] / cy1, M[0, 0] / cy1)
+    return np.array((x0, y0, z0)), np.array((x1, y1, z1))
