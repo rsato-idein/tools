@@ -28,7 +28,7 @@ cube.location = (-3, 0, 1.6)
 cube.rotation_mode = 'ZYX'
 
 # order: yaw, pitch, roll
-save_dir = f'/Users/rsato/Documents/Blender/cube_above_camera'
+save_dir = os.path.join(os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api', 'cube_above_camera')
 tait_bryan = False
 os.makedirs(save_dir, exist_ok=True)
 interval = 180
@@ -45,7 +45,7 @@ for yaw in range(-180, 181, interval):
             if tait_bryan:
                 pitch = -pitch
                 yaw = -yaw
-            save_path = f'{save_dir}/pose_{round(pitch)}_{round(yaw)}_{round(roll)}.png'
+            save_path = os.path.join(save_dir, f'pose_{round(pitch)}_{round(yaw)}_{round(roll)}.png')
             bpy.data.images['Render Result'].save_render(filepath=save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
