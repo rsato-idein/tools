@@ -2,6 +2,7 @@ import json
 import os
 from math import radians
 from shutil import rmtree
+from time import time
 
 import bpy
 import numpy as np
@@ -9,7 +10,7 @@ import numpy as np
 WORK_DIR = os.path.join(
     os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api'
 )
-FBX_FILE_NAME = '001'
+FBX_NO = '001'
 FBX_OBJ_NAME = 'Game_engine'
 
 
@@ -20,8 +21,8 @@ if 'Cube' in bpy.data.objects:
     bpy.ops.object.delete()
 
 # 解像度を変更
-bpy.context.scene.render.resolution_x = 256
-bpy.context.scene.render.resolution_y = 256
+bpy.context.scene.render.resolution_x = 128
+bpy.context.scene.render.resolution_y = 128
 
 # カメラ設定
 cam = bpy.data.objects['Camera']
@@ -39,7 +40,7 @@ light.rotation_euler = (radians(0), radians(0), radians(0))
 
 # obj 設定
 if FBX_OBJ_NAME not in bpy.data.objects:
-    obj_path = os.path.join(WORK_DIR, 'MF', f'{FBX_FILE_NAME}.fbx')
+    obj_path = os.path.join(WORK_DIR, 'MF', FBX_NO, 'human.fbx')
     bpy.ops.import_scene.fbx(filepath=obj_path)
 
 obj = bpy.data.objects[FBX_OBJ_NAME]
@@ -89,6 +90,7 @@ rmtree(save_dir, ignore_errors=True)
 os.makedirs(save_dir)
 tait_bryan = False
 interval = 90
+bpy.context.scene.render.film_transparent = True
 for yaw in range(-180, 180, interval):
     bpy.ops.object.mode_set(mode='OBJECT')
     obj.rotation_euler[2] = radians(yaw)
@@ -99,6 +101,7 @@ for yaw in range(-180, 180, interval):
     for pitch in range(-90, 91, interval):
         pitch = np.clip(pitch, -90 + 1e-6, 90 - 1e-6)
         for roll in range(-90, 90, interval):
+            t = time()
             R = get_R(pitch, yaw, roll)
             theta = np.arccos(R[2, 0]) - np.pi/2
             head.rotation_euler = (radians(pitch), 0, radians(roll))
@@ -113,7 +116,7 @@ for yaw in range(-180, 180, interval):
                 pitch = -pitch
                 yaw = -yaw
             save_path = os.path.join(
-                save_dir, f'{FBX_FILE_NAME}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png')
+                save_dir, f'{FBX_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}_{time() - t:.03f}.png')
             bpy.data.images['Render Result'].save_render(filepath=save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
