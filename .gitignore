@@ -15,3 +15,5 @@ model.h
 *.mp4
 *.jpg
 *.gif
+*.png
+*.fbx

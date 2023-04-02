@@ -2,8 +2,9 @@
 https://github.com/Ascend-Research/HeadPoseEstimation-WHENet/blob/master/utils.py
 """
 
+from math import cos, pi, sin
+
 import numpy as np
-from math import cos, sin, pi
 from scipy.spatial import Delaunay
 
 

@@ -1,5 +1,6 @@
 import argparse
 import os
+
 import nnoir
 import numpy as np
 from PIL import Image, ImageDraw
