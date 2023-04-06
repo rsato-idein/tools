@@ -1,4 +1,4 @@
-# blender -b -P MH_above_camera.py -- 001 01 --cycles-device CUDA
+# blender -b -P MH_above_camera.py -- 001 01 90 --cycles-device CUDA
 
 import json
 import os
@@ -12,6 +12,7 @@ from PIL import Image
 WORK_DIR = os.path.dirname(__file__)
 FBX_NO = sys.argv[5]
 BG_NO = sys.argv[6]
+INTERVAL = sys.argv[7]
 FBX_OBJ_NAME = 'Game_engine'
 SPACE_DEPTH = 8
 CAM_SETTING = {
@@ -128,6 +129,7 @@ bpy.ops.armature.switch_direction()
 bpy.ops.object.mode_set(mode='OBJECT')
 obj.location = (-head_x, -head_y, 0)
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+bpy.context.scene.render.film_transparent = True
 
 # 回転 yaw -> pitch -> roll
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -178,19 +180,17 @@ def get_Rz(theta):
 save_dir = os.path.join(WORK_DIR, 'human_above_camera', FBX_NO)
 os.makedirs(save_dir, exist_ok=True)
 tait_bryan = False
-interval = 90
 Rc_inv = np.linalg.inv(np.array(cam.rotation_euler.to_matrix()) @ np.linalg.inv(get_R(90, 90, 0)))
-bpy.context.scene.render.film_transparent = True
 bg = Image.open(os.path.join(WORK_DIR, 'background', f'fm{BG_NO}.png')).convert('RGBA')
-for yaw__ in range(-180, 180, interval):
+for yaw_ in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
-    for pitch__ in range(-90, 90, interval):
-        pitch__ = np.clip(pitch__, -89, 89)
-        for roll__ in range(-90, 90, interval):
+    for pitch_ in range(-90, 90, INTERVAL):
+        pitch_ = np.clip(pitch_, -89, 89)
+        for roll_ in range(-90, 90, INTERVAL):
             # 角度の修正
-            pitch = pitch__ + np.random.random() * 0
-            yaw = yaw__ + np.random.random() * 0
-            roll = roll__ + np.random.random() * 0
+            pitch = pitch_ + np.random.random() * INTERVAL
+            yaw = yaw_ + np.random.random() * INTERVAL
+            roll = roll_ + np.random.random() * INTERVAL
 
             # location の設定
             Xo = np.random.random() * -SPACE_DEPTH

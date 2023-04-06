@@ -7,9 +7,12 @@ from math import radians
 
 import bpy
 import numpy as np
+from PIL import Image, ImageFilter
 
 WORK_DIR = os.path.dirname(__file__)
 FBX_NO = sys.argv[5]
+BG_NO = sys.argv[6]
+INTERVAL = sys.argv[7]
 FBX_OBJ_NAME = 'Game_engine'
 
 # レンダリング設定
@@ -49,6 +52,10 @@ cam.data.clip_end = 15
 light = bpy.data.objects['Light']
 light.location = (5, 0, 0)
 light.rotation_euler = (radians(0), radians(0), radians(0))
+light.data.type = 'SUN'
+light.data.energy = 20
+light.cycles.cast_shadow = False
+light.data.angle = radians(120)
 
 # obj 設定
 if FBX_OBJ_NAME not in bpy.data.objects:
@@ -75,6 +82,7 @@ bpy.ops.armature.switch_direction()
 bpy.ops.object.mode_set(mode='OBJECT')
 obj.location = (-head_x, -head_y, -head_z)
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+bpy.context.scene.render.film_transparent = True
 
 # 回転 yaw -> pitch -> roll
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -97,25 +105,31 @@ def get_R(p, y, r):
     return R
 
 
-save_dir = os.path.join(WORK_DIR, 'human_front_camera')
+save_dir = os.path.join(WORK_DIR, 'human_front_camera', FBX_NO)
 os.makedirs(save_dir, exist_ok=True)
 tait_bryan = False
-interval = 3
-bpy.context.scene.render.film_transparent = True
-for yaw in range(-180, 180, interval):
-    bpy.ops.object.mode_set(mode='OBJECT')
-    obj.rotation_euler[2] = radians(yaw)
-    bpy.ops.object.mode_set(mode='EDIT')
-    head_bone = bpy.context.edit_object.data.edit_bones['head']
-    head_bone.roll = radians(90 - yaw)
+bg = Image.open(os.path.join(WORK_DIR, 'background', f'fm{BG_NO}.png')).convert('RGBA')
+for yaw_ in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
-    for pitch in range(-90, 91, interval):
-        pitch = np.clip(pitch, -90 + 1e-6, 90 - 1e-6)
-        for roll in range(-90, 91, interval):
+    for pitch_ in range(-90, 90, INTERVAL):
+        pitch_ = np.clip(pitch_, -89, 89)
+        for roll_ in range(-90, 90, INTERVAL):
+            # 角度の修正
+            pitch = pitch_ + np.random.random() * INTERVAL
+            yaw = yaw_ + np.random.random() * INTERVAL
+            roll = roll_ + np.random.random() * INTERVAL
             R = get_R(pitch, yaw, roll)
+
+            # 剛体変換
+            obj.rotation_euler[2] = radians(yaw)
+            bpy.ops.object.mode_set(mode='EDIT')
+            head_bone = bpy.context.edit_object.data.edit_bones['head']
+            head_bone.roll = radians(90 - yaw)
+            bpy.ops.object.mode_set(mode='POSE')
+
             theta = np.arccos(R[2, 0]) - np.pi/2
             head.rotation_euler = (radians(pitch), 0, radians(roll))
-            neck.rotation_euler = (-(max(0, theta/3)), 0, 0)
+            neck.rotation_euler = (-(max(0, theta/90*45)), 0, 0)
             spine.location[2] = -0.1 * max(theta, 0) / np.pi * 2
 
             # 保存
@@ -124,10 +138,22 @@ for yaw in range(-180, 180, interval):
                 yaw = -yaw
             save_path = os.path.join(
                 save_dir,
-                f'{FBX_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png'
+                f'{FBX_NO}_{BG_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png'
             )
             bpy.context.scene.render.filepath = save_path
             bpy.ops.render.render(write_still=True)
+            img = Image.open(save_path)
+            if np.random.random() < 0.8:
+                img = img.filter(filter=ImageFilter.GaussianBlur(1))
+            edge = np.random.randint(128, 256)
+            l = np.random.randint(0, bg.size[0]-edge)
+            t = np.random.randint(256, bg.size[1]-edge-256)
+            r = l + edge
+            b = t + edge
+            random_bg = bg.crop((l, t, r, b)).resize((256, 256), Image.BILINEAR)
+            img = Image.alpha_composite(random_bg, img)
+            img.convert('RGB').save(save_path.replace('.png', '.jpg'))
+            os.remove(save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
                     'pitch': pitch,
