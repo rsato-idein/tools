@@ -168,9 +168,9 @@ for yaw_ in range(-180, 180, INTERVAL):
         pitch_ = np.clip(pitch_, -89, 89)
         for roll_ in range(-90, 90, INTERVAL):
             # 角度の修正
-            pitch = pitch_ + np.random.random() * INTERVAL
-            yaw = yaw_ + np.random.random() * INTERVAL
-            roll = roll_ + np.random.random() * INTERVAL
+            pitch = pitch_ + np.random.random() * INTERVAL * 0
+            yaw = yaw_ + np.random.random() * INTERVAL * 0
+            roll = roll_ + np.random.random() * INTERVAL * 0
 
             # location の設定
             Xo = np.random.random() * -SPACE_DEPTH
