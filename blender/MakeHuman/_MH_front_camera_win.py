@@ -1,28 +1,27 @@
 import json
 import os
 from math import radians
-from shutil import rmtree
-from time import time
 
 import bpy
 import numpy as np
 
 WORK_DIR = os.path.join(
-    os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api'
+    os.environ['HOMEPATH'], 'Works', 'tools', 'blender', 'MakeHuman'
 )
 FBX_NO = '001'
+BG_NO = '01'
+INTERVAL = 90
 FBX_OBJ_NAME = 'Game_engine'
 
+# レンダリング設定
+bpy.context.scene.render.resolution_x = 128
+bpy.context.scene.render.resolution_y = 128
 
 # Cube 削除
 bpy.ops.object.select_all(action='DESELECT')
 if 'Cube' in bpy.data.objects:
     bpy.data.objects['Cube'].select_set(True)
     bpy.ops.object.delete()
-
-# 解像度を変更
-bpy.context.scene.render.resolution_x = 128
-bpy.context.scene.render.resolution_y = 128
 
 # カメラ設定
 cam = bpy.data.objects['Camera']
@@ -37,10 +36,14 @@ cam.data.clip_end = 15
 light = bpy.data.objects['Light']
 light.location = (5, 0, 0)
 light.rotation_euler = (radians(0), radians(0), radians(0))
+light.data.type = 'SUN'
+light.data.energy = 20
+light.cycles.cast_shadow = False
+light.data.angle = radians(120)
 
 # obj 設定
 if FBX_OBJ_NAME not in bpy.data.objects:
-    obj_path = os.path.join(WORK_DIR, 'MF', FBX_NO, 'human.fbx')
+    obj_path = os.path.join(WORK_DIR, 'models', FBX_NO, 'human.fbx')
     bpy.ops.import_scene.fbx(filepath=obj_path)
 
 obj = bpy.data.objects[FBX_OBJ_NAME]
@@ -55,14 +58,15 @@ bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 bpy.ops.object.mode_set(mode='EDIT')
 head_bone = bpy.context.edit_object.data.edit_bones['head']
 head_bone.tail[0] = head_bone.head[0]
-hx, hy, hz = head_bone.head
+head_x, head_y, head_z = head_bone.head
 head_bone.roll = radians(90)
 bpy.ops.armature.select_all(action='DESELECT')
 bpy.context.edit_object.data.edit_bones['neck_01'].select = True
 bpy.ops.armature.switch_direction()
 bpy.ops.object.mode_set(mode='OBJECT')
-obj.location = (-hx, -hy, -hz)
+obj.location = (-head_x, -head_y, -head_z)
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+bpy.context.scene.render.film_transparent = True
 
 # 回転 yaw -> pitch -> roll
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -85,39 +89,42 @@ def get_R(p, y, r):
     return R
 
 
-save_dir = os.path.join(WORK_DIR, 'human_front_camera')
-rmtree(save_dir, ignore_errors=True)
-os.makedirs(save_dir)
+save_dir = os.path.join(WORK_DIR, 'human_front_camera', FBX_NO)
+os.makedirs(save_dir, exist_ok=True)
 tait_bryan = False
-interval = 90
-bpy.context.scene.render.film_transparent = True
-for yaw in range(-180, 180, interval):
-    bpy.ops.object.mode_set(mode='OBJECT')
-    obj.rotation_euler[2] = radians(yaw)
-    bpy.ops.object.mode_set(mode='EDIT')
-    head_bone = bpy.context.edit_object.data.edit_bones['head']
-    head_bone.roll = radians(90 - yaw)
+for yaw_ in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
-    for pitch in range(-90, 91, interval):
-        pitch = np.clip(pitch, -90 + 1e-6, 90 - 1e-6)
-        for roll in range(-90, 91, interval):
-            t = time()
+    for pitch_ in range(-90, 90, INTERVAL):
+        pitch_ = np.clip(pitch_, -89, 89)
+        for roll_ in range(-90, 90, INTERVAL):
+            # 角度の修正
+            pitch = pitch_ + np.random.random() * INTERVAL
+            yaw = yaw_ + np.random.random() * INTERVAL
+            roll = roll_ + np.random.random() * INTERVAL
             R = get_R(pitch, yaw, roll)
+
+            # 剛体変換
+            obj.rotation_euler[2] = radians(yaw)
+            bpy.ops.object.mode_set(mode='EDIT')
+            head_bone = bpy.context.edit_object.data.edit_bones['head']
+            head_bone.roll = radians(90 - yaw)
+            bpy.ops.object.mode_set(mode='POSE')
+
             theta = np.arccos(R[2, 0]) - np.pi/2
             head.rotation_euler = (radians(pitch), 0, radians(roll))
-            neck.rotation_euler = (-(max(0, theta/3)), 0, 0)
+            neck.rotation_euler = (-(max(0, theta/90*45)), 0, 0)
             spine.location[2] = -0.1 * max(theta, 0) / np.pi * 2
-
-            # レンダリング
-            bpy.ops.render.render()
 
             # 保存
             if tait_bryan:
                 pitch = -pitch
                 yaw = -yaw
             save_path = os.path.join(
-                save_dir, f'{FBX_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}_{time() - t:.03f}.png')
-            bpy.data.images['Render Result'].save_render(filepath=save_path)
+                save_dir,
+                f'{FBX_NO}_{BG_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png'
+            )
+            bpy.context.scene.render.filepath = save_path
+            bpy.ops.render.render(write_still=True)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
                     'pitch': pitch,

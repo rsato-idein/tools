@@ -1,4 +1,4 @@
-# blender -b -P MH_front_camera.py -- 001 --cycles-device CUDA
+# blender -b -P MH_front_camera.py -- 001 01 90 --cycles-device CUDA
 
 import json
 import os
@@ -59,7 +59,7 @@ light.data.angle = radians(120)
 
 # obj 設定
 if FBX_OBJ_NAME not in bpy.data.objects:
-    obj_path = os.path.join(WORK_DIR, 'MF', FBX_NO, 'human.fbx')
+    obj_path = os.path.join(WORK_DIR, 'models', FBX_NO, 'human.fbx')
     bpy.ops.import_scene.fbx(filepath=obj_path)
 
 obj = bpy.data.objects[FBX_OBJ_NAME]
