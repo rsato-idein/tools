@@ -12,7 +12,7 @@ from PIL import Image, ImageFilter
 WORK_DIR = os.path.dirname(__file__)
 FBX_NO = sys.argv[5]
 BG_NO = sys.argv[6]
-INTERVAL = sys.argv[7]
+INTERVAL = int(sys.argv[7])
 FBX_OBJ_NAME = 'Game_engine'
 
 # レンダリング設定
@@ -31,7 +31,7 @@ bpy.context.scene.render.use_persistent_data = True
 bpy.context.scene.world.cycles.sampling_method = 'MANUAL'
 bpy.context.scene.world.cycles.sample_map_resolution = 512
 bpy.context.scene.render.threads_mode = 'FIXED'
-bpy.context.scene.render.threads = 4
+bpy.context.scene.render.threads = 6
 
 # Cube 削除
 bpy.ops.object.select_all(action='DESELECT')
@@ -143,16 +143,14 @@ for yaw_ in range(-180, 180, INTERVAL):
             bpy.context.scene.render.filepath = save_path
             bpy.ops.render.render(write_still=True)
             img = Image.open(save_path)
-            if np.random.random() < 0.8:
-                img = img.filter(filter=ImageFilter.GaussianBlur(1))
             edge = np.random.randint(128, 256)
             l = np.random.randint(0, bg.size[0]-edge)
             t = np.random.randint(256, bg.size[1]-edge-256)
             r = l + edge
             b = t + edge
-            random_bg = bg.crop((l, t, r, b)).resize((256, 256), Image.BILINEAR)
+            random_bg = bg.crop((l, t, r, b)).resize((128, 128), Image.BILINEAR)
             img = Image.alpha_composite(random_bg, img)
-            img.convert('RGB').save(save_path.replace('.png', '.jpg'))
+            img.filter(filter=ImageFilter.GaussianBlur(np.random.randint(0, 5))).convert('RGB').save(save_path.replace('.png', '.jpg'))
             os.remove(save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({

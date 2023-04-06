@@ -12,7 +12,7 @@ from PIL import Image
 WORK_DIR = os.path.dirname(__file__)
 FBX_NO = sys.argv[5]
 BG_NO = sys.argv[6]
-INTERVAL = sys.argv[7]
+INTERVAL = int(sys.argv[7])
 FBX_OBJ_NAME = 'Game_engine'
 SPACE_DEPTH = 8
 CAM_SETTING = {
@@ -74,7 +74,7 @@ bpy.context.scene.render.use_persistent_data = True
 bpy.context.scene.world.cycles.sampling_method = 'MANUAL'
 bpy.context.scene.world.cycles.sample_map_resolution = 512
 bpy.context.scene.render.threads_mode = 'FIXED'
-bpy.context.scene.render.threads = 4
+bpy.context.scene.render.threads = 6
 
 # Cube 削除
 bpy.ops.object.select_all(action='DESELECT')
@@ -250,7 +250,7 @@ for yaw_ in range(-180, 180, INTERVAL):
             bpy.ops.render.render(write_still=True)
             img = Image.open(save_path)
             img = Image.alpha_composite(bg, img)
-            img.crop((xmin, ymin, xmax, ymax)).resize((256, 256), Image.BILINEAR).convert('RGB').save(save_path.replace('.png', '.jpg'))
+            img.crop((xmin, ymin, xmax, ymax)).resize((128, 128), Image.BILINEAR).convert('RGB').save(save_path.replace('.png', '.jpg'))
             os.remove(save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
