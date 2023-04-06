@@ -6,8 +6,8 @@ import bpy
 import numpy as np
 
 # 解像度を変更
-bpy.context.scene.render.resolution_x = 256
-bpy.context.scene.render.resolution_y = 256
+bpy.context.scene.render.resolution_x = 128
+bpy.context.scene.render.resolution_y = 128
 
 # カメラ設定
 cam = bpy.data.objects['Camera']
@@ -28,7 +28,8 @@ cube.location = (0, 0, 0)
 cube.rotation_mode = 'ZYX'
 
 # order: yaw, pitch, roll
-save_dir = os.path.join(os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api', 'cube_front_camera')
+# save_dir = os.path.join(os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api', 'cube_front_camera')
+save_dir = '/home/cube'
 tait_bryan = False
 os.makedirs(save_dir, exist_ok=True)
 interval = 90

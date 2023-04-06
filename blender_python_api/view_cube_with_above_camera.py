@@ -23,35 +23,42 @@ light.rotation_euler = (radians(0), radians(0), radians(0))
 
 # cube 設定
 cube = bpy.data.objects['Cube']
-cube.scale = (0.075, 0.075, 0.1)
-cube.location = (-3, 0, 1.6)
+cube.scale = (0.1, 0.1, 0.1)
+cube.location = (-1.5, 1, 1.6)
 cube.rotation_mode = 'ZYX'
+cube.rotation_euler = (0, 0, 0)
+array([[-1.93974944],
+       [ 1.        ],
+       [-0.66885864]])
+       
+# to camera: R^t(xw - t) and x, y, z = y, z, x
+# R^t @ R
 
-# order: yaw, pitch, roll
-save_dir = os.path.join(os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api', 'cube_above_camera')
-tait_bryan = False
-os.makedirs(save_dir, exist_ok=True)
-interval = 180
-for yaw in range(-180, 181, interval):
-    for pitch in range(-90, 91, interval):
-        pitch = np.clip(pitch, -90 + 1e-6, 90 - 1e-6)
-        for roll in range(-180, 181, interval):
-            cube.rotation_euler = (radians(roll), radians(pitch), radians(yaw))
+## order: yaw, pitch, roll
+#save_dir = os.path.join(os.environ['HOMEPATH'], 'Works', 'tools', 'blender_python_api', 'cube_above_camera')
+#tait_bryan = False
+#os.makedirs(save_dir, exist_ok=True)
+#interval = 180
+#for yaw in range(-180, 181, interval):
+#    for pitch in range(-90, 91, interval):
+#        pitch = np.clip(pitch, -90 + 1e-6, 90 - 1e-6)
+#        for roll in range(-180, 181, interval):
+#            cube.rotation_euler = (radians(roll), radians(pitch), radians(yaw))
 
-            # レンダリング
-            bpy.ops.render.render()
+#            # レンダリング
+#            bpy.ops.render.render()
 
-            # 保存
-            if tait_bryan:
-                pitch = -pitch
-                yaw = -yaw
-            save_path = os.path.join(save_dir, f'pose_{round(pitch)}_{round(yaw)}_{round(roll)}.png')
-            bpy.data.images['Render Result'].save_render(filepath=save_path)
-            with open(save_path.replace('.png', '.json'), 'w') as f:
-                json.dump({
-                    'pitch': pitch,
-                    'yaw': yaw,
-                    'roll': roll
-                }, f)
+#            # 保存
+#            if tait_bryan:
+#                pitch = -pitch
+#                yaw = -yaw
+#            save_path = os.path.join(save_dir, f'pose_{round(pitch)}_{round(yaw)}_{round(roll)}.png')
+#            bpy.data.images['Render Result'].save_render(filepath=save_path)
+#            with open(save_path.replace('.png', '.json'), 'w') as f:
+#                json.dump({
+#                    'pitch': pitch,
+#                    'yaw': yaw,
+#                    'roll': roll
+#                }, f)
 
-cube.rotation_euler = (radians(0), radians(0), radians(0))
+#cube.rotation_euler = (radians(0), radians(0), radians(0))

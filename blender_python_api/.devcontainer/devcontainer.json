@@ -1,0 +1,15 @@
+{
+    "name": "Blender",
+    "image": "nytimes/blender:3.3.1-gpu-ubuntu18.04",
+    "workspaceFolder": "/work",
+    "runArgs": [
+        "-it",
+        "--rm",
+        "--gpus",
+        "device=0",
+        "--shm-size=4g",
+        "--name",
+        "sato_blender"
+    ],
+    "workspaceMount": "src=/srv/work/rsato/blender,dst=/work,type=bind"
+}
