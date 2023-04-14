@@ -109,15 +109,14 @@ save_dir = os.path.join(WORK_DIR, 'human_front_camera', FBX_NO)
 os.makedirs(save_dir, exist_ok=True)
 tait_bryan = False
 bg = Image.open(os.path.join(WORK_DIR, 'background', f'fm{BG_NO}.png')).convert('RGBA')
-for yaw_ in range(-180, 180, INTERVAL):
+for yaw in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
-    for pitch_ in range(-90, 90, INTERVAL):
-        pitch_ = np.clip(pitch_, -89, 89)
-        for roll_ in range(-90, 90, INTERVAL):
-            # 角度の修正
-            pitch = pitch_ + np.random.random() * INTERVAL
-            yaw = yaw_ + np.random.random() * INTERVAL
-            roll = roll_ + np.random.random() * INTERVAL
+    for pitch in range(-60, 61, INTERVAL):
+        if not -50 <= pitch <= 60:
+            continue
+        for roll in range(-60, 61, INTERVAL):
+            if not -50 <= roll <= 50:
+                continue
             R = get_R(pitch, yaw, roll)
 
             # 剛体変換
@@ -150,7 +149,7 @@ for yaw_ in range(-180, 180, INTERVAL):
             b = t + edge
             random_bg = bg.crop((l, t, r, b)).resize((128, 128), Image.BILINEAR)
             img = Image.alpha_composite(random_bg, img)
-            img.filter(filter=ImageFilter.GaussianBlur(np.random.randint(0, 5))).convert('RGB').save(save_path.replace('.png', '.jpg'))
+            img.convert('RGB').save(save_path.replace('.png', '.jpg'))
             os.remove(save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
