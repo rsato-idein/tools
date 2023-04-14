@@ -191,6 +191,8 @@ for yaw_ in range(-180, 180, INTERVAL):
             pitch = pitch_ + np.random.random() * INTERVAL
             yaw = yaw_ + np.random.random() * INTERVAL
             roll = roll_ + np.random.random() * INTERVAL
+            if not (-50 <= pitch <= 60 and -50 <= roll <= 50):
+                continue
 
             # location の設定
             Xo = np.random.random() * -SPACE_DEPTH
@@ -206,8 +208,7 @@ for yaw_ in range(-180, 180, INTERVAL):
             Xc, Yc, Zc = (Rc_inv @ (np.array(head_location) - np.array(cam.location)).reshape(-1, 1)).flatten()
             Rs_tb = get_Ry(np.rad2deg(np.arctan(Zc/Xc)))
             Rs_lr = get_Rz(np.rad2deg(np.arctan(-Yc/Xc)))
-            Rc = get_R(pitch, yaw, roll)
-            R = np.linalg.inv(Rs_tb @ Rs_lr @ Rc_inv) @ Rc
+            R = Rs_tb @ Rs_lr @ Rc_inv @ get_R(pitch, yaw, roll)
             p, y, r = get_euler(R)
 
             # 剛体変換
@@ -218,7 +219,7 @@ for yaw_ in range(-180, 180, INTERVAL):
             bpy.ops.object.mode_set(mode='POSE')
 
             theta = np.arccos(R[2, 0]) - np.pi/2
-            head.rotation_euler = (radians(p), radians(y-yaw), radians(r))
+            head.rotation_euler = (radians(pitch), 0, radians(roll))
             neck.rotation_euler = (-(max(0, theta/90*45)), 0, 0)
             spine.location[2] = -0.1 * max(theta, 0) / np.pi * 2
 
@@ -242,9 +243,11 @@ for yaw_ in range(-180, 180, INTERVAL):
             if tait_bryan:
                 pitch = -pitch
                 yaw = -yaw
+                p = -p
+                y = -y
             save_path = os.path.join(
                 save_dir,
-                f'{FBX_NO}_{BG_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png'
+                f'{FBX_NO}_{BG_NO}_p{round(p):+04}_y{round(y):+04}_r{round(r):+04}_wp{round(pitch):+04}_wy{round(yaw):+04}_wr{round(roll):+04}.png'
             )
             bpy.context.scene.render.filepath = save_path
             bpy.ops.render.render(write_still=True)
@@ -254,11 +257,11 @@ for yaw_ in range(-180, 180, INTERVAL):
             os.remove(save_path)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
-                    'pitch': pitch,
-                    'yaw': yaw,
-                    'roll': roll,
+                    'pitch': p,
+                    'yaw': y,
+                    'roll': r,
                     'bbox': [xmin, ymin, xmax, ymax],
-                    'world_pose': [p, y, r]
+                    'world_pose': [pitch, yaw, roll]
                 }, f)
 
 bpy.ops.object.mode_set(mode='OBJECT')
