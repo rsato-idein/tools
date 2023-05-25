@@ -10,7 +10,8 @@ WORK_DIR = os.path.join(
 )
 FBX_NO = '001'
 BG_NO = '01'
-INTERVAL = 90
+MASK_RATE = 0.8
+INTERVAL = 45
 FBX_OBJ_NAME = 'Game_engine'
 
 # レンダリング設定
@@ -61,8 +62,13 @@ head_bone.tail[0] = head_bone.head[0]
 head_x, head_y, head_z = head_bone.head
 head_bone.roll = radians(90)
 bpy.ops.armature.select_all(action='DESELECT')
-bpy.context.edit_object.data.edit_bones['neck_01'].select = True
-bpy.ops.armature.switch_direction()
+bpy.context.edit_object.data.edit_bones['head'].select = True
+bpy.ops.armature.parent_clear(type='CLEAR')
+root_bone = bpy.context.edit_object.data.edit_bones['Root']
+root_bone.tail[0] = root_bone.head[0] = head_x
+root_bone.tail[2] = root_bone.tail[1]
+root_bone.tail[1] = 0
+root_bone.roll = radians(90)
 bpy.ops.object.mode_set(mode='OBJECT')
 obj.location = (-head_x, -head_y, -head_z)
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
@@ -72,10 +78,40 @@ bpy.context.scene.render.film_transparent = True
 bpy.ops.object.mode_set(mode='OBJECT')
 obj = bpy.data.objects[FBX_OBJ_NAME]
 head = obj.pose.bones['head']
-neck = obj.pose.bones['neck_01']
-spine = obj.pose.bones['spine_01']
+root = obj.pose.bones['Root']
 obj.rotation_mode = 'ZYX'
-head.rotation_mode = neck.rotation_mode = 'YXZ'
+head.rotation_mode = root.rotation_mode = 'YXZ'
+
+# マスク読み込み
+mask_path = os.path.join(WORK_DIR, 'models', 'mask', 'face-mask.fbx')
+bpy.ops.import_scene.fbx(filepath=mask_path)
+mask = bpy.data.objects['FaceMask']
+mask.scale = (0.006, 0.005, 0.005)
+mask.rotation_mode = 'YXZ'
+mask.rotation_euler = (radians(90), radians(90), radians(0))
+mask.location = (0.07, 0, -0.02)
+bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+# マスクの着用
+bpy.ops.object.select_all(action='DESELECT')
+bpy.data.objects[FBX_OBJ_NAME].select_set(True)
+bpy.ops.object.mode_set(mode='POSE')
+armature = bpy.context.active_object
+bpy.ops.pose.select_all(action='DESELECT')
+head_bone = armature.pose.bones.get('head')
+head_bone.bone.select = True
+armature.data.bones.active = head_bone.bone
+bpy.data.objects.get('FaceMask').select_set(True)
+bpy.context.view_layer.objects.active = armature
+bpy.ops.object.parent_set(type='BONE')
+
+# マスクカラーマテリアル作成
+mask_white = bpy.data.materials.new('White')
+mask_white.use_nodes = True
+mask_white.node_tree.nodes['Principled BSDF'].inputs[0].default_value = (0.5, 0.5, 0.5, 1.0)
+mask_black = bpy.data.materials.new('Black')
+mask_black.use_nodes = True
+mask_black.node_tree.nodes['Principled BSDF'].inputs[0].default_value = (0.01, 0.01, 0.01, 1.0)
 
 
 def get_R(p, y, r):
@@ -95,25 +131,29 @@ tait_bryan = False
 for yaw_ in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
     for pitch_ in range(-90, 90, INTERVAL):
-        pitch_ = np.clip(pitch_, -89, 89)
         for roll_ in range(-90, 90, INTERVAL):
             # 角度の修正
             pitch = pitch_ + np.random.random() * INTERVAL * 0
             yaw = yaw_ + np.random.random() * INTERVAL * 0
             roll = roll_ + np.random.random() * INTERVAL * 0
+            if not (-50 <= pitch <= 60 and -50 <= roll <= 50):
+                continue
+
             R = get_R(pitch, yaw, roll)
 
-            # 剛体変換
-            obj.rotation_euler[2] = radians(yaw)
-            bpy.ops.object.mode_set(mode='EDIT')
-            head_bone = bpy.context.edit_object.data.edit_bones['head']
-            head_bone.roll = radians(90 - yaw)
-            bpy.ops.object.mode_set(mode='POSE')
+            head.rotation_euler = (radians(pitch), radians(yaw), radians(roll))
+            root.rotation_euler = (radians(0), radians(yaw), radians(0))
 
-            theta = np.arccos(R[2, 0]) - np.pi/2
-            head.rotation_euler = (radians(pitch), 0, radians(roll))
-            neck.rotation_euler = (-(max(0, theta/90*45)), 0, 0)
-            spine.location[2] = -0.1 * max(theta, 0) / np.pi * 2
+            if np.random.rand() < MASK_RATE:
+                # マスク色変更
+                is_mask_white = np.random.rand() > 0.5
+                for key in ['FaceMask_Main', 'FaceMask_ElasticBand_Left', 'FaceMask_ElasticBand_Right']:
+                    bpy.data.objects[key].active_material = mask_white if is_mask_white else mask_black
+                    bpy.data.objects[key].hide_render = False
+            else:
+                # マスク非着用
+                for key in ['FaceMask_Main', 'FaceMask_ElasticBand_Left', 'FaceMask_ElasticBand_Right']:
+                    bpy.data.objects[key].hide_render = True
 
             # 保存
             if tait_bryan:
@@ -133,4 +173,11 @@ for yaw_ in range(-180, 180, INTERVAL):
                 }, f)
 
 bpy.ops.object.mode_set(mode='OBJECT')
+bpy.ops.object.select_all(action='DESELECT')
+obj = bpy.data.objects[FBX_OBJ_NAME]
+obj.select_set(True)
+for child in obj.children:
+    child.select_set(True)
+for child in bpy.data.objects['FaceMask'].children:
+    child.select_set(True)
 bpy.ops.object.delete()
