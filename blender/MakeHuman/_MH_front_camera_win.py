@@ -144,7 +144,8 @@ for yaw_ in range(-180, 180, INTERVAL):
             head.rotation_euler = (radians(pitch), radians(yaw), radians(roll))
             root.rotation_euler = (radians(0), radians(yaw), radians(0))
 
-            if np.random.rand() < MASK_RATE:
+            mask_flg = np.random.rand() < MASK_RATE
+            if mask_flg:
                 # マスク色変更
                 is_mask_white = np.random.rand() > 0.5
                 for key in ['FaceMask_Main', 'FaceMask_ElasticBand_Left', 'FaceMask_ElasticBand_Right']:
@@ -159,17 +160,22 @@ for yaw_ in range(-180, 180, INTERVAL):
             if tait_bryan:
                 pitch = -pitch
                 yaw = -yaw
-            save_path = os.path.join(
-                save_dir,
-                f'{FBX_NO}_{BG_NO}_p{round(pitch):+04}_y{round(yaw):+04}_r{round(roll):+04}.png'
-            )
+            save_name = '_'.join([
+                FBX_NO, BG_NO, f'p{round(pitch):+04}', f'y{round(yaw):+04}', f'r{round(roll):+04}',
+                f'wp{round(pitch):+04}', f'wy{round(yaw):+04}', f'wr{round(roll):+04}'
+            ]) + '.png'
+            if mask_flg:
+                save_name = save_name.replace('.png', '_mask.png')
+            save_path = os.path.join(save_dir, save_name)
             bpy.context.scene.render.filepath = save_path
             bpy.ops.render.render(write_still=True)
             with open(save_path.replace('.png', '.json'), 'w') as f:
                 json.dump({
                     'pitch': pitch,
                     'yaw': yaw,
-                    'roll': roll
+                    'roll': roll,
+                    'mask': mask_flg,
+                    'mask_color': ('white' if is_mask_white else 'black') if mask_flg else 'none'
                 }, f)
 
 bpy.ops.object.mode_set(mode='OBJECT')

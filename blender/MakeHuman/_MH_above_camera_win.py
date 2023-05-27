@@ -201,7 +201,6 @@ Rc_inv = np.linalg.inv(np.array(cam.rotation_euler.to_matrix()) @ np.linalg.inv(
 for yaw_ in range(-180, 180, INTERVAL):
     bpy.ops.object.mode_set(mode='POSE')
     for pitch_ in range(-90, 90, INTERVAL):
-        pitch_ = np.clip(pitch_, -89, 89)
         for roll_ in range(-90, 90, INTERVAL):
             # 角度の修正
             pitch = pitch_ + np.random.random() * INTERVAL * 0
@@ -232,7 +231,8 @@ for yaw_ in range(-180, 180, INTERVAL):
 
             obj.location = obj_location
 
-            if np.random.rand() < MASK_RATE:
+            mask_flg = np.random.rand() < MASK_RATE
+            if mask_flg:
                 # マスク色変更
                 is_mask_white = np.random.rand() > 0.5
                 for key in ['FaceMask_Main', 'FaceMask_ElasticBand_Left', 'FaceMask_ElasticBand_Right']:
@@ -263,10 +263,13 @@ for yaw_ in range(-180, 180, INTERVAL):
                 yaw = -yaw
                 p = -p
                 y = -y
-            save_path = os.path.join(
-                save_dir,
-                f'{FBX_NO}_{BG_NO}_p{round(p):+04}_y{round(y):+04}_r{round(r):+04}_wp{round(pitch):+04}_wy{round(yaw):+04}_wr{round(roll):+04}.png'
-            )
+            save_name = '_'.join([
+                FBX_NO, BG_NO, f'p{round(p):+04}', f'y{round(y):+04}', f'r{round(r):+04}',
+                f'wp{round(pitch):+04}', f'wy{round(yaw):+04}', f'wr{round(roll):+04}'
+            ]) + '.png'
+            if mask_flg:
+                save_name = save_name.replace('.png', '_mask.png')
+            save_path = os.path.join(save_dir, save_name)
             bpy.context.scene.render.filepath = save_path
             bpy.ops.render.render(write_still=True)
             with open(save_path.replace('.png', '.json'), 'w') as f:
@@ -275,7 +278,9 @@ for yaw_ in range(-180, 180, INTERVAL):
                     'yaw': y,
                     'roll': r,
                     'bbox': [xmin, ymin, xmax, ymax],
-                    'world_pose': [pitch, yaw, roll]
+                    'world_pose': [pitch, yaw, roll],
+                    'mask': mask_flg,
+                    'mask_color': ('white' if is_mask_white else 'black') if mask_flg else 'none'
                 }, f)
 
 bpy.ops.object.mode_set(mode='OBJECT')
