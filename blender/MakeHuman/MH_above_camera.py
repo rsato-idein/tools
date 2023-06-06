@@ -59,6 +59,19 @@ CAM_SETTING = {
     },
 }
 
+MASK_SETTING = {
+    '001': {'mask_x': 0.07, 'mask_z': -0.02},
+    '002': {'mask_x': 0.07, 'mask_z': -0.02},
+    '003': {'mask_x': 0.08, 'mask_z': -0.03},
+    '004': {'mask_x': 0.075, 'mask_z': -0.03},
+    '005': {'mask_x': 0.1, 'mask_z': -0.03},
+    '006': {'mask_x': 0.088, 'mask_z': -0.02},
+    '007': {'mask_x': 0.088, 'mask_z': -0.02},
+    '008': {'mask_x': 0.051, 'mask_z': -0.02},
+    '009': {'mask_x': 0.078, 'mask_z': -0.03},
+    '010': {'mask_x': 0.08, 'mask_z': -0.03},
+}
+
 # レンダリング設定
 bpy.context.scene.render.resolution_x = W = 2048
 bpy.context.scene.render.resolution_y = H = 1536
@@ -149,7 +162,7 @@ mask = bpy.data.objects['FaceMask']
 mask.scale = (0.006, 0.005, 0.005)
 mask.rotation_mode = 'YXZ'
 mask.rotation_euler = (radians(90), radians(90), radians(0))
-mask.location = (0.07, 0, head_z-0.02)
+mask.location = (MASK_SETTING[FBX_NO]['mask_x'], 0, head_z+MASK_SETTING[FBX_NO]['mask_z'])
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
 # マスクの着用
